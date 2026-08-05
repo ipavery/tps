@@ -446,6 +446,7 @@ MonoBehaviour:
   onPrimaryActionPressed: {fileID: 11400000, guid: f48adbe17161042ef8cf65a5a455594a, type: 2}
   onPrimaryActionReleased: {fileID: 11400000, guid: a670f0da4a4d64cea91ff13081e68da8, type: 2}
   onMenuPressed: {fileID: 11400000, guid: 5f76e3427057c467fa2f4de049753b9e, type: 2}
+  onInteractPressed: {fileID: 11400000, guid: 4a08ca9920a8d204388179b7c2281f61, type: 2}
 --- !u!114 &7875331226141230548
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -504,7 +505,7 @@ MonoBehaviour:
   groundedRadius: 0.28
   groundLayers:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 769
   slopeForce: 5
   slopeForceRayLength: 1.5
   isMovementEnabled: 1
@@ -652,11 +653,11 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   interactionLayer:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 256
   raycastDistance: 5
   proximityRadius: 2
   interactionCooldown: 0.2
-  onInteractPressed: {fileID: 11400000, guid: 7980b19c34cba49e0ab89edafbc46cce, type: 2}
+  onInteractPressed: {fileID: 11400000, guid: 4a08ca9920a8d204388179b7c2281f61, type: 2}
 --- !u!114 &7543712645488431592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -884,6 +885,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
+  m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 0
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0

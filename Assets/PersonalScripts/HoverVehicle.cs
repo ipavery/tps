@@ -1,12 +1,11 @@
 using UnityEngine;
 using Unity.Netcode;
-using Blocks.Gameplay.Core; // Added your framework's namespace
+using Blocks.Gameplay.Core;
 
 [RequireComponent(typeof(Rigidbody))]
-public class HoverVehicle : NetworkBehaviour
+public class HoverVehicle : NetworkBehaviour, IInteractable
 {
     [Header("Input Integration")]
-    [Tooltip("Drag the 'onMoveInput' Vector2Event ScriptableObject here.")]
     public Vector2Event moveInputEvent;
 
     [Header("Hover Physics")]
@@ -23,6 +22,11 @@ public class HoverVehicle : NetworkBehaviour
 
     private Rigidbody rb;
     private NetworkVariable<bool> isMounted = new NetworkVariable<bool>(false);
+
+    // --- IInteractable Implementation ---
+    public InteractionTriggerMode TriggerMode => InteractionTriggerMode.OnButtonPress;
+    public int Priority => 10;
+    public string InteractionPromptText => "Drive Speeder";
 
     private void Awake()
     {
@@ -60,11 +64,10 @@ public class HoverVehicle : NetworkBehaviour
 
     private void ApplyPropulsionAndSteering()
     {
-        // Read input directly from your framework's cached event value
         Vector2 input = moveInputEvent != null ? moveInputEvent.LastValue : Vector2.zero;
         
-        float accelInput = input.y; // W/S or Left Stick Up/Down
-        float turnInput = input.x;  // A/D or Left Stick Left/Right
+        float accelInput = input.y; 
+        float turnInput = input.x;  
 
         rb.AddForce(transform.forward * accelInput * forwardThrust);
         rb.AddTorque(transform.up * turnInput * turnTorque);
@@ -73,23 +76,27 @@ public class HoverVehicle : NetworkBehaviour
         rb.AddForce(-sidewaysVelocity * lateralGrip, ForceMode.Acceleration);
     }
 
-    private void OnCollisionEnter(Collision collision)
+    // --- Interaction Logic ---
+    public bool CanInteract(GameObject interactor)
     {
-        if (!IsServer && !IsOwner) return; 
+        // Only allow interaction if the vehicle is empty
+        return !isMounted.Value;
+    }
 
-        if (!isMounted.Value && collision.gameObject.CompareTag("Player"))
+    public void Interact(GameObject interactor)
+    {
+        // The client player presses the interact button, sending a request to the server
+        NetworkObject playerNetObj = interactor.GetComponent<NetworkObject>();
+        if (playerNetObj != null)
         {
-            NetworkObject playerNetObj = collision.gameObject.GetComponent<NetworkObject>();
-            if (playerNetObj != null)
-            {
-                RequestMountRpc(playerNetObj.OwnerClientId);
-            }
+            RequestMountRpc(playerNetObj.OwnerClientId);
         }
     }
 
     [Rpc(SendTo.Server)]
     private void RequestMountRpc(ulong clientId)
     {
+        // The server validates the request and changes ownership
         if (!isMounted.Value)
         {
             NetworkObject.ChangeOwnership(clientId);

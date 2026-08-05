@@ -37,7 +37,7 @@ namespace Blocks.Gameplay.Core
 
         private CorePlayerManager m_PlayerManager;
         private Camera m_MainCamera;
-        private IInteractable m_CurrentFocusedInteractable;
+        public IInteractable CurrentFocusedInteractable { get; private set; }
         private float m_CooldownTimer;
         private readonly Collider[] m_ProximityColliders = new Collider[20];
 
@@ -142,7 +142,7 @@ namespace Blocks.Gameplay.Core
 
         private void ClearFocus()
         {
-            m_CurrentFocusedInteractable = null;
+            CurrentFocusedInteractable = null;
         }
 
         /// <summary>
@@ -200,14 +200,14 @@ namespace Blocks.Gameplay.Core
                 }
             }
 
-            if (bestTarget != m_CurrentFocusedInteractable)
+            if (bestTarget != CurrentFocusedInteractable)
             {
-                m_CurrentFocusedInteractable = bestTarget;
+                CurrentFocusedInteractable = bestTarget;
 
                 // Automatically interact when entering focus for OnFocusEnter trigger mode
-                if (m_CurrentFocusedInteractable != null && m_CurrentFocusedInteractable.TriggerMode == InteractionTriggerMode.OnFocusEnter)
+                if (CurrentFocusedInteractable != null && CurrentFocusedInteractable.TriggerMode == InteractionTriggerMode.OnFocusEnter)
                 {
-                    m_CurrentFocusedInteractable.Interact(gameObject);
+                    CurrentFocusedInteractable.Interact(gameObject);
                 }
             }
         }
@@ -217,12 +217,12 @@ namespace Blocks.Gameplay.Core
         /// </summary>
         private void TryInteract()
         {
-            if (!IsEnabled || m_CooldownTimer > 0 || m_CurrentFocusedInteractable == null) return;
+            if (!IsEnabled || m_CooldownTimer > 0 || CurrentFocusedInteractable == null) return;
 
-            if (m_CurrentFocusedInteractable.TriggerMode == InteractionTriggerMode.OnButtonPress &&
-                m_CurrentFocusedInteractable.CanInteract(gameObject))
+            if (CurrentFocusedInteractable.TriggerMode == InteractionTriggerMode.OnButtonPress &&
+                CurrentFocusedInteractable.CanInteract(gameObject))
             {
-                m_CurrentFocusedInteractable.Interact(gameObject);
+                CurrentFocusedInteractable.Interact(gameObject);
                 m_CooldownTimer = interactionCooldown;
             }
         }
