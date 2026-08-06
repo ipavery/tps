@@ -770,7 +770,7 @@ Transform:
   m_GameObject: {fileID: 109605353}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.113, z: -3.427}
+  m_LocalPosition: {x: 0, y: 4, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3875,27 +3875,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 23.628962
+      value: 14.352261
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.00025111044
+      value: -0.00025111437
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 23.761171
+      value: 12.292269
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.70710695
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: -0.7071067
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalRotation.z
@@ -3907,7 +3907,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -4049,7 +4049,7 @@ Rigidbody:
   m_GameObject: {fileID: 419788803}
   serializedVersion: 5
   m_Mass: 300
-  m_LinearDamping: 1
+  m_LinearDamping: 0
   m_AngularDamping: 1
   m_CenterOfMass: {x: 0, y: -1, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -4094,13 +4094,16 @@ MonoBehaviour:
   interactableLayerName: Interactable
   moveInputEvent: {fileID: 11400000, guid: a9096ef1199d14af0bd27800ad2e3ebf, type: 2}
   lookInputEvent: {fileID: 11400000, guid: 8af931367978e4bc9bae53b88856ff5b, type: 2}
-  controlSensitivity: 0.2
-  liftCoefficient: 0.05
-  maxThrust: 10000
+  controlSensitivity: 0.1
+  liftCoefficient: 0.3
+  dragCoefficient: 1
+  maxThrust: 5000
   throttleSpeed: 0.5
-  pitchSpeed: 50
-  yawSpeed: 30
-  rollSpeed: 60
+  lateralGrip: 0.1
+  verticalGrip: 1
+  pitchSpeed: 5
+  yawSpeed: 5
+  rollSpeed: 10
 --- !u!4 &419788812 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}

@@ -95,11 +95,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineFollow
   TrackerSettings:
     BindingMode: 3
-    PositionDamping: {x: 0.1, y: 0.1, z: 0.1}
+    PositionDamping: {x: 0, y: 0, z: 0}
     AngularDampingMode: 0
-    RotationDamping: {x: 1, y: 1, z: 1}
+    RotationDamping: {x: 0, y: 0, z: 0}
     QuaternionDamping: 1
-  FollowOffset: {x: 0, y: 0, z: -10}
+  FollowOffset: {x: 0, y: 0, z: 0}
 --- !u!114 &8941078865338262827
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135,8 +135,8 @@ MonoBehaviour:
   inactivePriority: 9
   playerRotationMode: 2
   overrideLookSettings: 1
-  lookSensitivity: 0.5
-  verticalLookLimit: 70
+  lookSensitivity: 0.1
+  verticalLookLimit: 80
 --- !u!114 &1982895397614513425
 MonoBehaviour:
   m_ObjectHideFlags: 0
