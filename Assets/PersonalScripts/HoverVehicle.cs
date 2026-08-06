@@ -3,6 +3,7 @@ using Unity.Netcode;
 using Blocks.Gameplay.Core;
 using UnityEngine.InputSystem;
 using Unity.Cinemachine;
+using TMPro;
 
 [RequireComponent(typeof(Rigidbody))]
 public class HoverVehicle : NetworkBehaviour, IInteractable
@@ -33,6 +34,23 @@ public class HoverVehicle : NetworkBehaviour, IInteractable
     [Header("Camera Setup")]
     public CinemachineCamera playerCamera;
 
+    [Header("Dynamic Damping")]
+    public float maxDamping = 0.1f; // Damping when stopped
+    public float minDamping = 0f;   // Damping at top speed
+    public float topSpeed = 100f;   // Speed at which damping becomes 0
+
+    // Caches the camera component so we don't use GetComponent every frame
+    private Unity.Cinemachine.CinemachineThirdPersonFollow activeCameraBody;
+    // Cache variables for restoring the camera later
+
+    [Header("Speedometer UI")]
+    public TextMeshProUGUI speedometerText;
+    public GameObject speedometerCanvas; // Optional: To toggle the whole UI on/off
+    
+    [Tooltip("Multiplier to convert m/s. Use 2.237 for MPH, or 3.6 for KM/H")]
+    public float speedConversionRate = 2.237f; 
+    public string speedUnitLabel = "MPH";
+
     // --- IInteractable Implementation ---
     public InteractionTriggerMode TriggerMode => InteractionTriggerMode.OnButtonPress;
     public int Priority => 10;
@@ -56,10 +74,29 @@ public class HoverVehicle : NetworkBehaviour, IInteractable
         }
     }
 
+
     private void Update()
     {
         // If this instance is not spawned, or we are not the player driving it, do nothing
         if (!IsSpawned || !IsOwner) return;
+
+        // NEW: Dynamic Damping Logic
+        if (isMounted.Value && activeCameraBody != null)
+        {
+            float currentSpeed = rb.linearVelocity.magnitude;
+            float speedPercentage = Mathf.InverseLerp(0f, topSpeed, currentSpeed);
+            float targetDamping = Mathf.Lerp(maxDamping, minDamping, speedPercentage);
+
+            activeCameraBody.Damping = new Vector3(targetDamping, targetDamping, targetDamping);
+        }
+        
+        // NEW: Speedometer Logic
+        if (isMounted.Value && speedometerText != null)
+        {
+            // Get raw speed in m/s, multiply for MPH/KMH, and round to a whole number
+            float currentSpeed = rb.linearVelocity.magnitude * speedConversionRate;
+            speedometerText.text = $"{Mathf.RoundToInt(currentSpeed)} {speedUnitLabel}";
+        }
 
         // If we are mounted and the player presses the 'E' key
         if (isMounted.Value && Keyboard.current.eKey.wasPressedThisFrame)
@@ -151,50 +188,48 @@ public class HoverVehicle : NetworkBehaviour, IInteractable
     {
         var localPlayer = Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject;
 
-        // A. Disable the CharacterController to stop physics sliding
-        if (localPlayer.TryGetComponent<CharacterController>(out var controller))
-        {
-            controller.enabled = false;
-        }
-
-        // B. Find and disable EVERY collider on the player and its children (arms, legs, etc.)
+        // A. Disable Colliders and CharacterController
+        if (localPlayer.TryGetComponent<CharacterController>(out var controller)) { controller.enabled = false; }
         Collider[] allColliders = localPlayer.GetComponentsInChildren<Collider>();
-        foreach (Collider col in allColliders)
-        {
-            col.enabled = false;
-        }
+        foreach (Collider col in allColliders) { col.enabled = false; }
 
-        // B. Disable the standard movement script (Update 'ThirdPersonController' to your script's name)
+        // B. Disable movement script AND turn off Network Interpolation to fix the jitter!
         if (localPlayer.TryGetComponent<CoreMovement>(out var playerMovement))
         {
             playerMovement.enabled = false;
+            playerMovement.Interpolate = false; // This is the magic jitter fix
         }
 
-        // C. Snap the local position and rotation exactly to the seat
+        // C. Snap the player to the seat
         localPlayer.transform.SetPositionAndRotation(seatTransform.position, seatTransform.rotation);
 
-        // 2. Find the Free Look Camera by its exact Hierarchy name
+        // D. Anchor the camera to the vehicle and zero out the mouse look
+        if (localPlayer.TryGetComponent<CoreCameraController>(out var camController))
+        {
+            camController.RotationAnchor = transform; 
+            camController.SetHorizontalLookAngle(0f);
+        }
+
+        // E. Find the camera ONLY to cache it for your dynamic damping. 
+        // We no longer change the Follow or LookAt targets!
         GameObject freeLookObj = GameObject.Find("[BB] FreeLook(Clone)");
         if (freeLookObj != null)
         {
             var freeLookCam = freeLookObj.GetComponent<Unity.Cinemachine.CinemachineCamera>();
             if (freeLookCam != null)
             {
-                freeLookCam.Follow = seatTransform;
-                freeLookCam.LookAt = seatTransform;
+                activeCameraBody = freeLookCam.GetComponent<Unity.Cinemachine.CinemachineThirdPersonFollow>();
             }
         }
 
-        // 3. Find the Aim Camera by its exact Hierarchy name
-        GameObject aimCamObj = GameObject.Find("[BB] Aim(Clone)");
-        if (aimCamObj != null)
+        // Show the speedometer UI
+        if (speedometerCanvas != null)
         {
-            var aimCam = aimCamObj.GetComponent<Unity.Cinemachine.CinemachineCamera>();
-            if (aimCam != null)
-            {
-                aimCam.Follow = seatTransform;
-                aimCam.LookAt = seatTransform;
-            }
+            speedometerCanvas.SetActive(true);
+        }
+        else if (speedometerText != null)
+        {
+            speedometerText.gameObject.SetActive(true);
         }
     }
     
@@ -224,50 +259,39 @@ public class HoverVehicle : NetworkBehaviour, IInteractable
     {
         var localPlayer = Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject;
 
-        // A. Re-enable the CharacterController
-        if (localPlayer.TryGetComponent<CharacterController>(out var controller))
-        {
-            controller.enabled = true;
-        }
-
-        // B. Find and re-enable EVERY collider on the player and its children
+        // A. Re-enable Colliders and CharacterController
+        if (localPlayer.TryGetComponent<CharacterController>(out var controller)) { controller.enabled = true; }
         Collider[] allColliders = localPlayer.GetComponentsInChildren<Collider>(true); 
-        foreach (Collider col in allColliders)
-        {
-            col.enabled = true;
-        }
+        foreach (Collider col in allColliders) { col.enabled = true; }
 
-        // B. Re-enable the standard movement script
+        // B. Re-enable movement script AND Network Interpolation
         if (localPlayer.TryGetComponent<CoreMovement>(out var playerMovement))
         {
             playerMovement.enabled = true;
+            playerMovement.Interpolate = true; 
         }
 
-        // C. (Crucial) Move the player slightly to the side so they don't clip inside the vehicle and get stuck
+        // C. Move the player slightly to the side
         localPlayer.transform.position += localPlayer.transform.right * 2f;
 
-        // 2. Revert the Free Look Camera back to the player
-        GameObject freeLookObj = GameObject.Find("[BB] FreeLook(Clone)");
-        if (freeLookObj != null)
+        // D. Remove the Rotation Anchor
+        if (localPlayer.TryGetComponent<CoreCameraController>(out var camController))
         {
-            var freeLookCam = freeLookObj.GetComponent<Unity.Cinemachine.CinemachineCamera>();
-            if (freeLookCam != null)
-            {
-                freeLookCam.Follow = localPlayer.transform;
-                freeLookCam.LookAt = localPlayer.transform;
-            }
+            camController.RotationAnchor = null;
+            camController.SetHorizontalLookAngle(camController.transform.eulerAngles.y);
         }
 
-        // 3. Revert the Aim Camera back to the player
-        GameObject aimCamObj = GameObject.Find("[BB] Aim(Clone)");
-        if (aimCamObj != null)
+        // E. Clear the damping cache. No target reverting needed!
+        activeCameraBody = null;
+
+        // Hide the speedometer UI
+        if (speedometerCanvas != null)
         {
-            var aimCam = aimCamObj.GetComponent<Unity.Cinemachine.CinemachineCamera>();
-            if (aimCam != null)
-            {
-                aimCam.Follow = localPlayer.transform;
-                aimCam.LookAt = localPlayer.transform;
-            }
+            speedometerCanvas.SetActive(false);
+        }
+        else if (speedometerText != null)
+        {
+            speedometerText.gameObject.SetActive(false);
         }
     }
 }

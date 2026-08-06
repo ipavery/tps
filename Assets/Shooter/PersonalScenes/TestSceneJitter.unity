@@ -1535,6 +1535,7 @@ GameObject:
   - component: {fileID: 460191474}
   - component: {fileID: 460191476}
   - component: {fileID: 460191477}
+  - component: {fileID: 460191478}
   m_Layer: 0
   m_Name: TestSled
   m_TagString: Untagged
@@ -1695,7 +1696,7 @@ MonoBehaviour:
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
+  SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
@@ -1747,6 +1748,23 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &460191478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 460191469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Components.NetworkRigidbody
+  ShowTopMostFoldoutHeaderGroup: 1
+  NetworkRigidbodyBaseExpanded: 0
+  UseRigidBodyForMotion: 0
+  AutoUpdateKinematicState: 1
+  AutoSetKinematicOnDespawn: 1
 --- !u!1 &463936331
 GameObject:
   m_ObjectHideFlags: 0
@@ -2419,6 +2437,91 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2086513816}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &578315853
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: sessionUI
+      value: 
+      objectReference: {fileID: 1849223360}
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: spawnPoints.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: 'spawnPoints.Array.data[0]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: 'spawnPoints.Array.data[1]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: 'spawnPoints.Array.data[2]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2341912560403749330, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: 'spawnPoints.Array.data[3]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954805574165222783, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_Name
+      value: GameManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 7021669768488879558, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: soundGameObjectPrefab
+      value: 
+      objectReference: {fileID: 5192668249899003854, guid: 9c2442552d75e435997c1813e15d24e6, type: 3}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -37.25701
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.73346
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 17.60001
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659318674726366128, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 51238ec1086bd4d9abf55bc190cdfd1a, type: 3}
 --- !u!1 &589878637
 GameObject:
   m_ObjectHideFlags: 0
@@ -2844,7 +2947,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 625c14eee3ad46c99df7c7c891ef668a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineThirdPersonFollow
-  Damping: {x: 0.1, y: 0.1, z: 0.1}
+  Damping: {x: 0, y: 0, z: 0}
   ShoulderOffset: {x: -0.5, y: 0.5, z: 0}
   VerticalArmLength: 0.4
   CameraSide: 1
@@ -6025,7 +6128,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   sledRigidbody: {fileID: 460191474}
-  controlCamera: {fileID: 97218147}
+  sledNetworkTransform: {fileID: 460191477}
+  cameraBrain: {fileID: 97218148}
 --- !u!4 &1604842986
 Transform:
   m_ObjectHideFlags: 0
@@ -7281,7 +7385,7 @@ MonoBehaviour:
     EnableNetworkLogs: 1
     NetworkTopology: 1
     UseCMBService: 0
-    AutoSpawnPlayerPrefabClientSide: 1
+    AutoSpawnPlayerPrefabClientSide: 0
     NetworkMessageMetrics: 1
     NetworkProfilingMetrics: 1
     OldPrefabList: []
@@ -7516,3 +7620,4 @@ SceneRoots:
   - {fileID: 2086513816}
   - {fileID: 1849223362}
   - {fileID: 729162840}
+  - {fileID: 578315853}

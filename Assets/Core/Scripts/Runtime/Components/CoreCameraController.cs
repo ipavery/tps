@@ -35,10 +35,14 @@ namespace Blocks.Gameplay.Core
         [SerializeField] private Vector2Event onLookInput;
 
         /// <summary>
+        /// Optional transform to anchor the camera's base rotation (e.g., a vehicle).
+        /// </summary>
+        public Transform RotationAnchor { get; set; }
+
+        /// <summary>
         /// Gets the current horizontal rotation angle of the look target.
         /// </summary>
-        public float CurrentHorizontalLookAngle => m_CurrentHorizontalLookAngle;
-
+        public float CurrentHorizontalLookAngle => RotationAnchor != null ? RotationAnchor.eulerAngles.y + m_CurrentHorizontalLookAngle : m_CurrentHorizontalLookAngle;
         /// <summary>
         /// Gets the currently active player rotation coupling mode, determined by the active camera mode.
         /// </summary>
@@ -124,13 +128,20 @@ namespace Blocks.Gameplay.Core
             base.OnNetworkDespawn();
         }
 
+        // helper method to prevent snapping
+        public void SetHorizontalLookAngle(float angle)
+        {
+            m_CurrentHorizontalLookAngle = angle;
+        }
+
         private void LateUpdate()
         {
             // We update the camera rotation in LateUpdate to ensure all character movement for the frame has been processed.
             // This prevents visual jitter.
             if (lookTarget != null && IsOwner && enableLookInput)
             {
-                Quaternion horizontalRotation = Quaternion.Euler(0f, m_CurrentHorizontalLookAngle, 0f);
+                float baseRotationY = RotationAnchor != null ? RotationAnchor.eulerAngles.y : 0f;
+                Quaternion horizontalRotation = Quaternion.Euler(0f, baseRotationY + m_CurrentHorizontalLookAngle, 0f);
                 Quaternion verticalRotation = Quaternion.Euler(m_CurrentVerticalLookAngle, 0f, 0f);
                 lookTarget.rotation = horizontalRotation * verticalRotation;
             }

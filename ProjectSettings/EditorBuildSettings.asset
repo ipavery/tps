@@ -26,5 +26,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Shooter/PersonalScenes/TestScene1.unity
     guid: 19f3c7eaf8124cd44a6521984e861d18
+  - enabled: 1
+    path: Assets/Shooter/PersonalScenes/TestSceneJitter.unity
+    guid: e173928060af46f48a006ea09a0203ce
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
