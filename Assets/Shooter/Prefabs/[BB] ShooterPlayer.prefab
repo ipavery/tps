@@ -495,7 +495,7 @@ MonoBehaviour:
   SlerpPosition: 0
   directionMode: 2
   moveSpeed: 3
-  sprintSpeed: 6
+  sprintSpeed: 10
   rotationSmoothTime: 0.1
   speedChangeRate: 15
   forceDecayRate: 5
