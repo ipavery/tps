@@ -336,7 +336,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3509405776
+  GlobalObjectIdHash: 3299177739
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -556,6 +556,7 @@ MonoBehaviour:
   cameraModePrefabs:
   - {fileID: 5622520908732185617, guid: 759b3211060754dee9567487cbe086de, type: 3}
   - {fileID: 3275213384281174370, guid: e5dd683161ffa429aa94b8ef18a33bfe, type: 3}
+  - {fileID: 5622520908732185617, guid: eebe40ac7abb3e046964f07b4f1e403a, type: 3}
   lookTarget: {fileID: 8338988566280778637}
   initialModeName: FreeLook
   enableLookInput: 1

@@ -137,9 +137,9 @@ namespace Blocks.Gameplay.Core
         private void LateUpdate()
         {
             // We update the camera rotation in LateUpdate to ensure all character movement for the frame has been processed.
-            // This prevents visual jitter.
             if (lookTarget != null && IsOwner && enableLookInput)
             {
+                // This original logic safely maintains your HoverVehicle2 and walking setups!
                 float baseRotationY = RotationAnchor != null ? RotationAnchor.eulerAngles.y : 0f;
                 Quaternion horizontalRotation = Quaternion.Euler(0f, baseRotationY + m_CurrentHorizontalLookAngle, 0f);
                 Quaternion verticalRotation = Quaternion.Euler(m_CurrentVerticalLookAngle, 0f, 0f);
@@ -388,6 +388,24 @@ namespace Blocks.Gameplay.Core
         public bool IsCameraModeRegistered(string modeName)
         {
             return m_RegisteredCameraModes.Exists(m => m.ModeName == modeName);
+        }
+
+        /// <summary>
+        /// Overrides the follow and look targets for all registered camera modes dynamically.
+        /// Pass null to revert the cameras back to the player's default lookTarget.
+        /// </summary>
+        public void OverrideCameraTargets(Transform overrideTarget)
+        {
+            // If we pass null, revert back to the default lookTarget
+            Transform target = overrideTarget != null ? overrideTarget : lookTarget;
+            
+            foreach (var mode in m_RegisteredCameraModes)
+            {
+                if (mode != null)
+                {
+                    mode.SetTargets(target);
+                }
+            }
         }
 
         #endregion
