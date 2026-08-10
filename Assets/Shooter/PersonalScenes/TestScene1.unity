@@ -4258,6 +4258,7 @@ MonoBehaviour:
   seats:
   - {fileID: 2061535261}
   strictCameraFollow: 1
+  anchorCameraRotation: 1
   cameraAnchor: {fileID: 109605354}
   maxDamping: 0.1
   minDamping: 0
@@ -13171,6 +13172,7 @@ MonoBehaviour:
   seats:
   - {fileID: 1353670337}
   strictCameraFollow: 0
+  anchorCameraRotation: 1
   cameraAnchor: {fileID: 1054416810}
   maxDamping: 0.1
   minDamping: 0
@@ -14165,6 +14167,7 @@ MonoBehaviour:
   seats:
   - {fileID: 1543379572}
   strictCameraFollow: 0
+  anchorCameraRotation: 1
   cameraAnchor: {fileID: 0}
   maxDamping: 0.1
   minDamping: 0
@@ -14548,6 +14551,7 @@ MonoBehaviour:
   seats:
   - {fileID: 681034057}
   strictCameraFollow: 0
+  anchorCameraRotation: 0
   cameraAnchor: {fileID: 397962699}
   maxDamping: 0.1
   minDamping: 0

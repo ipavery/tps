@@ -23,6 +23,8 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     [Header("Camera & UI")]
     [Tooltip("Enable to explicitly set the Camera's Follow and LookAt targets to the Camera Anchor.")]
     public bool strictCameraFollow = false;
+    [Tooltip("If true, the camera rotates with the vehicle. If false, free look is preserved.")]
+    public bool anchorCameraRotation = true;
     [Tooltip("Transform used to lock the camera's view. If left blank, it defaults to the vehicle root.")]
     public Transform cameraAnchor;
     
@@ -199,8 +201,21 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
             cachedCamController = camController;
             Transform targetAnchor = cameraAnchor != null ? cameraAnchor : transform;
             
-            cachedCamController.RotationAnchor = targetAnchor;
-            cachedCamController.SetHorizontalLookAngle(0f);
+            // Only set the Rotation Anchor if we want the camera to turn with the vehicle
+            if (anchorCameraRotation)
+            {
+                cachedCamController.RotationAnchor = targetAnchor;
+                
+                // 0 degrees relative to the vehicle anchor
+                cachedCamController.SetHorizontalLookAngle(0f); 
+            }
+            else
+            {
+                cachedCamController.RotationAnchor = null;
+                
+                // Snap the free-look camera behind the vehicle using its world Y rotation
+                cachedCamController.SetHorizontalLookAngle(transform.eulerAngles.y); 
+            }
 
             if (isLocalPlayerDriver && strictCameraFollow)
             {
@@ -310,9 +325,16 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
                 isCameraOverridden = false;
             }
             
-            if (cachedCamController != null && cachedCamController.RotationAnchor != targetAnchor)
+            if (cachedCamController != null)
             {
-                cachedCamController.RotationAnchor = targetAnchor;
+                if (anchorCameraRotation && cachedCamController.RotationAnchor != targetAnchor)
+                {
+                    cachedCamController.RotationAnchor = targetAnchor;
+                }
+                else if (!anchorCameraRotation && cachedCamController.RotationAnchor != null)
+                {
+                    cachedCamController.RotationAnchor = null;
+                }
             }
         }
     }

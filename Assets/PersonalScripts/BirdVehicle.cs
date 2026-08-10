@@ -131,9 +131,10 @@ public class BirdVehicle : BaseVehicle
         if (moveInput.sqrMagnitude < 0.01f) return;
 
         Vector3 moveDirection;
+        bool useCameraRelative = false; // Set to true to move relative to the camera's forward direction, false for camera-relative
 
         // If we have a camera reference, calculate movement relative to the camera's XZ plane
-        if (cameraTransform != null)
+        if (cameraTransform != null && useCameraRelative)
         {
             Vector3 camForward = cameraTransform.forward;
             Vector3 camRight = cameraTransform.right;
