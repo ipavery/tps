@@ -63,6 +63,7 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     protected virtual void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        rb.sleepThreshold = 0f; // Prevents the vehicle from going to sleep too quickly
         int interactLayer = LayerMask.NameToLayer(interactableLayerName);
         if (interactLayer == -1)
         {
@@ -81,9 +82,21 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     protected virtual void FixedUpdate()
     {
         if (!IsSpawned) return;
-        if (IsOwner && serverSeatMap.ContainsValue(0))
+        
+        if (IsOwner)
         {
-            ApplyVehiclePhysics();
+
+
+            // 2. Safely check if a driver is present across both Host and Client
+            bool hasDriver = (IsServer && serverSeatMap.ContainsValue(0)) || isLocalPlayerDriver;
+
+            if (hasDriver)
+            {
+                ApplyVehiclePhysics();
+            } else
+            {
+                ApplyAlwaysPhysics();
+            }
         }
     }
 
@@ -110,6 +123,7 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     }
 
     protected virtual void ProcessVehicleInput() { }
+    protected virtual void ApplyAlwaysPhysics() { }
     protected virtual void ApplyVehiclePhysics() { }
 
     public bool CanInteract(GameObject interactor)
