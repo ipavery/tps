@@ -3530,11 +3530,20 @@ MonoBehaviour:
   footJoint: {fileID: 2110638637}
   footMesh: {fileID: 1109816706}
   hoverOrigin: {fileID: 435768187}
-  maxLegLength: 2.5
+  maxLegLength: 2
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
-  bendBackward: 0
+  bendBackward: 1
+  oppositeLeg: {fileID: 2071316679}
+  stepSpeed: 8
+  stepHeight: 0.5
+  stepDistance: 1.2
+  velocityAnticipation: 0.3
+  stepCooldown: 0.15
+  restThreshold: 0.3
+  vehicleRb: {fileID: 1459033326}
+  stepPushForce: 500
 --- !u!1001 &367921866
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13320,7 +13329,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 12.29
+      value: 15.6
       objectReference: {fileID: 0}
     - target: {fileID: 4996138570027138, guid: 18c5fed9cca812a458ccf567688e3a1f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -15120,8 +15129,8 @@ MonoBehaviour:
   maxDamping: 0.1
   minDamping: 0
   topSpeed: 5
-  speedometerText: {fileID: 0}
-  speedometerCanvas: {fileID: 0}
+  speedometerText: {fileID: 1814260728}
+  speedometerCanvas: {fileID: 889000399}
   speedConversionRate: 1
   speedUnitLabel: m/s
   interactableLayerName: Interactable
@@ -15140,8 +15149,8 @@ MonoBehaviour:
   dampingConstant: 500
   uprightTorque: 100
   uprightDamping: 50
-  walkAcceleration: 20
-  rotationTorque: 10
+  walkAcceleration: 50
+  rotationTorque: 150
   walkingDrag: 3
   walkingAngularDrag: 5
 --- !u!54 &1459033326
@@ -15258,7 +15267,7 @@ Transform:
   m_GameObject: {fileID: 1459033321}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.22, y: 4.06, z: 8.88}
+  m_LocalPosition: {x: -6.22, y: 9.96, z: 8.88}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -22575,11 +22584,20 @@ MonoBehaviour:
   footJoint: {fileID: 1426612406}
   footMesh: {fileID: 972431132}
   hoverOrigin: {fileID: 903920394}
-  maxLegLength: 2.5
+  maxLegLength: 2
   groundLayer:
     serializedVersion: 2
     m_Bits: 512
-  bendBackward: 0
+  bendBackward: 1
+  oppositeLeg: {fileID: 366432322}
+  stepSpeed: 8
+  stepHeight: 0.5
+  stepDistance: 1.2
+  velocityAnticipation: 0.3
+  stepCooldown: 0.15
+  restThreshold: 0.3
+  vehicleRb: {fileID: 1459033326}
+  stepPushForce: 500
 --- !u!4 &2071775833 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7631817072081687726, guid: 0be31a30263a21f44bd88eecb493fbf9, type: 3}

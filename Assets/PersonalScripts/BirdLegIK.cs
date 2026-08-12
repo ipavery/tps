@@ -8,104 +8,211 @@ public class BirdLegIK : MonoBehaviour
     public Transform footJoint;
     
     [Header("Visuals")]
-    [Tooltip("The actual foot model that should sit flat on the ground.")]
     public Transform footMesh;
 
     [Header("Raycast Settings")]
-    [Tooltip("The physics origin for the hover (from BirdVehicle) to match the length.")]
     public Transform hoverOrigin;
     public float maxLegLength = 3f;
     public LayerMask groundLayer;
-    
-    [Tooltip("True for bird knees (which are technically ankles and bend backwards). False for human knees.")]
     public bool bendBackward = true; 
 
-    // We calculate these automatically on start based on your Editor setup
+    [Header("Stepping Logic")]
+    [Tooltip("Drag the OTHER leg's script here so they alternate steps.")]
+    public BirdLegIK oppositeLeg; 
+    
+    [Tooltip("The base animation speed of the leg moving (used when stopped or walking slowly).")]
+    public float minStepSpeed = 6f;
+    [Tooltip("Multiplier added to the step speed based on how fast the vehicle is moving.")]
+    public float stepSpeedMultiplier = 1.5f;
+    public float stepHeight = 0.5f;   
+    
+    public float stepDistance = 1.2f;
+    public float velocityAnticipation = 0.3f;
+    public float stepCooldown = 0.15f; 
+    public float restThreshold = 0.4f;
+
+    [Header("Physics Interaction")]
+    public Rigidbody vehicleRb;
+    public float stepPushForce = 1500f;
+
+    // Public state for the opposite leg to read
+    public bool isStepping { get; private set; } = false;
+    public float lastStepEndTime { get; private set; } = 0f;
+
     private float thighLength;
     private float shinLength;
 
+    private Vector3 currentPlantedPos;
+    private Vector3 currentPlantedNormal = Vector3.up;
+    private Vector3 stepStartPos;
+    private Vector3 stepTargetPos;
+    private float stepProgress = 0f;
+    private float currentActiveStepSpeed = 8f; // Holds the dynamic speed for the current step
+
+    private Vector3 lastBodyPos;
+    private Vector3 bodyVelocity;
+
     private void Start()
     {
-        // Automatically measure the lengths between the joints you placed in the scene
         if (hipJoint != null && kneeJoint != null && footJoint != null)
         {
             thighLength = Vector3.Distance(hipJoint.position, kneeJoint.position);
             shinLength = Vector3.Distance(kneeJoint.position, footJoint.position);
         }
+
+        currentPlantedPos = footJoint.position;
+        lastBodyPos = hoverOrigin.position;
     }
 
     private void LateUpdate()
     {
         if (hipJoint == null || kneeJoint == null || footJoint == null) return;
 
-        // 1. Raycast to find where the foot should plant
-        Vector3 targetFootPos = hoverOrigin.position - (hoverOrigin.up * maxLegLength);
-        Vector3 targetFootNormal = Vector3.up;
+        bodyVelocity = (hoverOrigin.position - lastBodyPos) / Time.deltaTime;
+        lastBodyPos = hoverOrigin.position;
+
+        GetIdealFootPosition(out Vector3 idealPos, out Vector3 idealNormal);
+
+        if (!isStepping)
+        {
+            CheckAndStartStep(idealPos, idealNormal);
+        }
+
+        Vector3 activeFootPos = currentPlantedPos;
+        if (isStepping)
+        {
+            activeFootPos = AnimateStep();
+        }
+
+        SolveIK(activeFootPos, idealNormal);
+    }
+
+    private void GetIdealFootPosition(out Vector3 pos, out Vector3 normal)
+    {
+        pos = hoverOrigin.position - (hoverOrigin.up * maxLegLength);
+        normal = Vector3.up;
 
         if (Physics.Raycast(hoverOrigin.position, -hoverOrigin.up, out RaycastHit hit, maxLegLength, groundLayer))
         {
-            targetFootPos = hit.point;
-            targetFootNormal = hit.normal;
+            pos = hit.point;
+            normal = hit.normal;
+        }
+    }
+
+    public float GetPredictedDistanceToIdeal()
+    {
+        GetIdealFootPosition(out Vector3 idealPos, out _);
+        Vector3 predictedIdeal = idealPos + (bodyVelocity * velocityAnticipation);
+        return Vector3.Distance(currentPlantedPos, predictedIdeal);
+    }
+
+    private void CheckAndStartStep(Vector3 idealPos, Vector3 idealNormal)
+    {
+        if (oppositeLeg != null)
+        {
+            if (oppositeLeg.isStepping) return;
+            if (Time.time - oppositeLeg.lastStepEndTime < stepCooldown) return;
         }
 
-        // 2. Calculate the distance and vector from Hip to Foot
+        float currentSpeed = bodyVelocity.magnitude;
+        bool isStopped = currentSpeed < 0.5f;
+
+        Vector3 predictedIdeal = idealPos + (bodyVelocity * velocityAnticipation);
+        float distanceToPredicted = Vector3.Distance(currentPlantedPos, predictedIdeal);
+        
+        float threshold = isStopped ? restThreshold : stepDistance;
+
+        if (distanceToPredicted > threshold)
+        {
+            if (oppositeLeg != null && oppositeLeg.GetPredictedDistanceToIdeal() > distanceToPredicted + 0.1f)
+            {
+                return; 
+            }
+
+            isStepping = true;
+            stepProgress = 0f;
+            stepStartPos = currentPlantedPos;
+            currentPlantedNormal = idealNormal;
+
+            // Lock in the animation speed based on the vehicle's current speed
+            currentActiveStepSpeed = Mathf.Max(minStepSpeed, currentSpeed * stepSpeedMultiplier);
+
+            if (isStopped)
+            {
+                stepTargetPos = idealPos;
+            }
+            else
+            {
+                Vector3 moveDir = bodyVelocity.normalized;
+                moveDir.y = 0; 
+                stepTargetPos = predictedIdeal + (moveDir * (stepDistance * 0.25f));
+            }
+        }
+    }
+
+    private Vector3 AnimateStep()
+    {
+        // Use the dynamically calculated speed for this specific step
+        stepProgress += Time.deltaTime * currentActiveStepSpeed;
+
+        if (vehicleRb != null)
+        {
+            Vector3 pushDirection = (Vector3.up + bodyVelocity.normalized).normalized;
+            vehicleRb.AddForceAtPosition(pushDirection * stepPushForce * Time.deltaTime, stepStartPos, ForceMode.Force);
+        }
+
+        if (stepProgress >= 1f)
+        {
+            stepProgress = 1f;
+            isStepping = false;
+            lastStepEndTime = Time.time; 
+            currentPlantedPos = stepTargetPos;
+            return currentPlantedPos;
+        }
+
+        Vector3 currentPos = Vector3.Lerp(stepStartPos, stepTargetPos, stepProgress);
+        currentPos.y += Mathf.Sin(stepProgress * Mathf.PI) * stepHeight;
+        
+        return currentPos;
+    }
+
+    private void SolveIK(Vector3 targetFootPos, Vector3 targetNormal)
+    {
         Vector3 hipToTarget = targetFootPos - hipJoint.position;
         float distance = hipToTarget.magnitude;
         Vector3 kneePos;
 
-        // 3. Solve the Knee Position
         if (distance >= thighLength + shinLength)
         {
-            // The foot is too far! Stretch the leg straight out.
             kneePos = hipJoint.position + hipToTarget.normalized * thighLength;
         }
         else
         {
-            // The foot is close enough to bend the knee using Law of Cosines
-            float a = thighLength;
-            float b = shinLength;
-            float c = distance;
-
-            // Calculate the angle in radians, then convert to degrees
-            float angleRad = Mathf.Acos((a * a + c * c - b * b) / (2f * a * c));
+            float angleRad = Mathf.Acos((thighLength * thighLength + distance * distance - shinLength * shinLength) / (2f * thighLength * distance));
             float angleDeg = angleRad * Mathf.Rad2Deg;
 
-            // 1. Determine which way the knee should try to point
-            Vector3 kneeAimDirection = bendBackward ? -transform.forward : transform.forward;
-            
-            // 2. Create a dynamic hinge axis perpendicular to the leg line and the aim direction
+            Vector3 kneeAimDirection = transform.forward;
             Vector3 bendAxis = Vector3.Cross(hipToTarget.normalized, kneeAimDirection);
             
-            // 3. Fallback just in case the leg is completely perfectly straight forward/backward
-            if (bendAxis.sqrMagnitude < 0.001f)
-            {
-                bendAxis = transform.right;
-            }
-            else
-            {
-                bendAxis = bendAxis.normalized;
-            }
+            if (bendAxis.sqrMagnitude < 0.001f) bendAxis = transform.right;
+            else bendAxis = bendAxis.normalized;
 
-            // Rotate the straight-line vector by our calculated angle to find the knee direction
+            if (bendBackward) angleDeg = -angleDeg;
+
             Vector3 kneeDir = Quaternion.AngleAxis(angleDeg, bendAxis) * hipToTarget.normalized;
             kneePos = hipJoint.position + kneeDir * thighLength;
         }
 
-        // 4. Apply Positions
         kneeJoint.position = kneePos;
         footJoint.position = targetFootPos;
 
-        // 5. Aim the joints at their targets (assuming the meshes are built pointing down the Z axis)
-        // If your meshes look weird, just rotate the Mesh child objects in the Unity Editor until they align!
         hipJoint.rotation = Quaternion.LookRotation(kneePos - hipJoint.position, transform.forward);
         kneeJoint.rotation = Quaternion.LookRotation(targetFootPos - kneePos, transform.forward);
         
-        Debug.DrawLine(kneeJoint.position, targetFootPos, Color.red, 0.1f);
-        // 6. Snap the visual foot to the floor and align it with the ground slope
         if (footMesh != null)
         {
             footMesh.position = targetFootPos;
-            footMesh.rotation = Quaternion.FromToRotation(transform.up, targetFootNormal) * transform.rotation;
+            footMesh.rotation = Quaternion.FromToRotation(transform.up, targetNormal) * transform.rotation;
         }
     }
 }
