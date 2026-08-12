@@ -20,9 +20,7 @@ public class BirdLegIK : MonoBehaviour
     [Tooltip("Drag the OTHER leg's script here so they alternate steps.")]
     public BirdLegIK oppositeLeg; 
     
-    [Tooltip("The base animation speed of the leg moving (used when stopped or walking slowly).")]
     public float minStepSpeed = 6f;
-    [Tooltip("Multiplier added to the step speed based on how fast the vehicle is moving.")]
     public float stepSpeedMultiplier = 1.5f;
     public float stepHeight = 0.5f;   
     
@@ -35,7 +33,6 @@ public class BirdLegIK : MonoBehaviour
     public Rigidbody vehicleRb;
     public float stepPushForce = 1500f;
 
-    // Public state for the opposite leg to read
     public bool isStepping { get; private set; } = false;
     public float lastStepEndTime { get; private set; } = 0f;
 
@@ -47,7 +44,7 @@ public class BirdLegIK : MonoBehaviour
     private Vector3 stepStartPos;
     private Vector3 stepTargetPos;
     private float stepProgress = 0f;
-    private float currentActiveStepSpeed = 8f; // Holds the dynamic speed for the current step
+    private float currentActiveStepSpeed = 8f; 
 
     private Vector3 lastBodyPos;
     private Vector3 bodyVelocity;
@@ -133,9 +130,8 @@ public class BirdLegIK : MonoBehaviour
             stepProgress = 0f;
             stepStartPos = currentPlantedPos;
             currentPlantedNormal = idealNormal;
-
-            // Lock in the animation speed based on the vehicle's current speed
             currentActiveStepSpeed = Mathf.Max(minStepSpeed, currentSpeed * stepSpeedMultiplier);
+            Debug.Log($"Step speed is {currentActiveStepSpeed}");
 
             if (isStopped)
             {
@@ -145,14 +141,27 @@ public class BirdLegIK : MonoBehaviour
             {
                 Vector3 moveDir = bodyVelocity.normalized;
                 moveDir.y = 0; 
-                stepTargetPos = predictedIdeal + (moveDir * (stepDistance * 0.25f));
+                Vector3 projectedTarget = predictedIdeal + (moveDir * (stepDistance * 0.25f));
+                
+                // GROUND CLAMPING: Raycast from the vehicle's height down to the projected X/Z coordinate
+                Vector3 rayOrigin = new Vector3(projectedTarget.x, hoverOrigin.position.y, projectedTarget.z);
+                
+                if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, maxLegLength * 2f, groundLayer))
+                {
+                    stepTargetPos = hit.point;
+                    currentPlantedNormal = hit.normal;
+                }
+                else
+                {
+                    // Fallback if the step is hanging off a massive cliff
+                    stepTargetPos = projectedTarget;
+                }
             }
         }
     }
 
     private Vector3 AnimateStep()
     {
-        // Use the dynamically calculated speed for this specific step
         stepProgress += Time.deltaTime * currentActiveStepSpeed;
 
         if (vehicleRb != null)
