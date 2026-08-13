@@ -107,6 +107,7 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
         if (!IsSpawned) return;
         
         // 1. Handle UI, Camera, and Inputs (Driver Only)
+        //Debug.Log((isLocalPlayerMounted, isLocalPlayerDriver));
         if (isLocalPlayerMounted && isLocalPlayerDriver)
         {
             ProcessDriverVisuals();
@@ -277,14 +278,12 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
         if (cachedCamController != null)
         {
             cachedCamController.RotationAnchor = null;
+
+            cachedCamController.SwitchCameraMode("FreeLook"); 
             
-            if (strictCameraFollow)
-            {
-                cachedCamController.SwitchCameraMode("FreeLook"); 
-                
-                // REVERT TARGETS BACK TO THE PLAYER'S NORMAL PIVOT
-                cachedCamController.OverrideCameraTargets(null); 
-            }
+            // REVERT TARGETS BACK TO THE PLAYER'S NORMAL PIVOT
+            cachedCamController.OverrideCameraTargets(null); 
+            
             
             cachedCamController.SetHorizontalLookAngle(cachedCamController.transform.eulerAngles.y);
             cachedCamController = null;
@@ -341,14 +340,39 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
 
     private void ProcessDriverVisuals()
     {
+        // --- NEW: DYNAMICALLY FETCH THE ACTIVE CINEMACHINE CAMERA ---
+        if (Camera.main != null)
+        {
+            var brain = Camera.main.GetComponent<CinemachineBrain>();
+            if (brain != null && brain.ActiveVirtualCamera != null)
+            {
+                // Get the camera Cinemachine is currently looking through
+                CinemachineCamera currentCam = brain.ActiveVirtualCamera as CinemachineCamera;
+                
+                // If the camera changed (e.g., switched to FlightMode), update our references!
+                if (currentCam != activeCam)
+                {
+                    activeCam = currentCam;
+                    if (activeCam != null)
+                    {
+                        // Fetch the body component to control damping
+                        activeCameraBody = activeCam.GetComponent<CinemachineThirdPersonFollow>();
+                    }
+                }
+            }
+        }
+        // ------------------------------------------------------------
+
         if (activeCameraBody != null)
         {
             float currentSpeed = rb.linearVelocity.magnitude;
             float speedPercentage = Mathf.InverseLerp(0f, topSpeed, currentSpeed);
             float targetDamping = Mathf.Lerp(maxDamping, minDamping, speedPercentage);
+            
+            // Apply the calculated damping directly to the active camera
             activeCameraBody.Damping = new Vector3(targetDamping, targetDamping, targetDamping);
-            Debug.Log($"activeCameraBody {activeCameraBody.name} damping set to {targetDamping}");
         }
+
         if (speedometerText != null)
         {
             float currentSpeed = rb.linearVelocity.magnitude * speedConversionRate;

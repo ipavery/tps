@@ -6,6 +6,8 @@ public class ProceduralVisualBobbing : MonoBehaviour
     [Tooltip("The main vehicle Rigidbody used to calculate speed.")]
     public Rigidbody vehicleRb;
 
+    public BirdVehicle birdVehicle; //to know when to stop oscillating when flying
+
     [Header("Bobbing Settings")]
     [Tooltip("How fast the bobbing cycles relative to movement speed.")]
     public float bobSpeedMultiplier = 2f; 
@@ -42,7 +44,7 @@ public class ProceduralVisualBobbing : MonoBehaviour
         float speed = horizontalVelocity.magnitude;
 
         // 2. Advance the wave if moving, or smoothly rest if stopped
-        if (speed > 0.1f)
+        if (speed > 0.1f && birdVehicle.isWalking)
         {
             distanceTraveled += speed * Time.deltaTime * bobSpeedMultiplier;
         }
