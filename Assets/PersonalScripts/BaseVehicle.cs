@@ -54,7 +54,7 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     private Vector3 originalCameraDamping;
     private Transform originalFollow;
     private Transform originalLookAt;
-    private CoreCameraController cachedCamController;
+    protected CoreCameraController cachedCamController;
     private bool isCameraOverridden = false;
 
     // --- IInteractable Implementation ---
@@ -347,11 +347,36 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
             float speedPercentage = Mathf.InverseLerp(0f, topSpeed, currentSpeed);
             float targetDamping = Mathf.Lerp(maxDamping, minDamping, speedPercentage);
             activeCameraBody.Damping = new Vector3(targetDamping, targetDamping, targetDamping);
+            Debug.Log($"activeCameraBody {activeCameraBody.name} damping set to {targetDamping}");
         }
         if (speedometerText != null)
         {
             float currentSpeed = rb.linearVelocity.magnitude * speedConversionRate;
             speedometerText.text = $"{Mathf.RoundToInt(currentSpeed)} {speedUnitLabel}";
+        }
+    }
+
+    /// <summary>
+    /// Safely switches the Cinemachine camera mode for the driver and manages target overrides.
+    /// </summary>
+    protected void SetDriverCameraMode(string cameraMode, bool overrideTargets)
+    {
+        // Only run this for the driver who actually owns the camera
+        if (cachedCamController == null || !isLocalPlayerDriver) return;
+
+        // 1. Switch the actual Cinemachine Virtual Camera
+        cachedCamController.SwitchCameraMode(cameraMode);
+
+        // 2. Handle the Follow/LookAt targets
+        if (overrideTargets)
+        {
+            Transform targetAnchor = cameraAnchor != null ? cameraAnchor : transform;
+            cachedCamController.OverrideCameraTargets(targetAnchor);
+        }
+        else
+        {
+            // Passing null reverts the camera to follow the Player model naturally
+            cachedCamController.OverrideCameraTargets(null);
         }
     }
 }

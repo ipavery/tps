@@ -33,6 +33,11 @@ public class BirdLegIK : MonoBehaviour
     public Rigidbody vehicleRb;
     public float stepPushForce = 1500f;
 
+    [Header("Flight Retraction")]
+    public BirdVehicle birdVehicle;
+    [Tooltip("Where the foot should pull up to when flying (relative to the hip).")]
+    public Vector3 flightRetractedOffset = new Vector3(0, -0.5f, -1f);
+
     public bool isStepping { get; private set; } = false;
     public float lastStepEndTime { get; private set; } = 0f;
 
@@ -68,6 +73,26 @@ public class BirdLegIK : MonoBehaviour
         bodyVelocity = (hoverOrigin.position - lastBodyPos) / Time.deltaTime;
         lastBodyPos = hoverOrigin.position;
 
+        // --- FLIGHT OVERRIDE ---
+        if (birdVehicle != null && !birdVehicle.isWalking)
+        {
+            isStepping = false;
+            
+            // Calculate where the tucked foot should be
+            Vector3 tuckedPos = hipJoint.position + (birdVehicle.transform.rotation * flightRetractedOffset);
+            
+            // THE FIX: Add the vehicle's movement displacement to the foot this frame.
+            // This prevents the foot from being "left behind" in world space!
+            currentPlantedPos += (hoverOrigin.position - lastBodyPos);
+            
+            // Now smoothly reel it in
+            currentPlantedPos = Vector3.Lerp(currentPlantedPos, tuckedPos, Time.deltaTime * 15f);
+            
+            SolveIK(currentPlantedPos, birdVehicle.transform.up);
+            return; 
+        }
+        // ----------------------------
+
         GetIdealFootPosition(out Vector3 idealPos, out Vector3 idealNormal);
 
         if (!isStepping)
@@ -86,6 +111,7 @@ public class BirdLegIK : MonoBehaviour
 
     private void GetIdealFootPosition(out Vector3 pos, out Vector3 normal)
     {
+        // 2. NORMAL WALKING MODE
         pos = hoverOrigin.position - (hoverOrigin.up * maxLegLength);
         normal = Vector3.up;
 
@@ -131,7 +157,7 @@ public class BirdLegIK : MonoBehaviour
             stepStartPos = currentPlantedPos;
             currentPlantedNormal = idealNormal;
             currentActiveStepSpeed = Mathf.Max(minStepSpeed, currentSpeed * stepSpeedMultiplier);
-            Debug.Log($"Step speed is {currentActiveStepSpeed}");
+            //Debug.Log($"Step speed is {currentActiveStepSpeed}");
 
             if (isStopped)
             {
@@ -189,9 +215,18 @@ public class BirdLegIK : MonoBehaviour
     {
         Vector3 hipToTarget = targetFootPos - hipJoint.position;
         float distance = hipToTarget.magnitude;
+        float maxReach = thighLength + shinLength;
         Vector3 kneePos;
 
-        if (distance >= thighLength + shinLength)
+        // THE FIX: Clamp the foot target so it can NEVER exceed the physical leg length
+        if (distance > maxReach)
+        {
+            // Pull the target back to the absolute maximum reach of the leg
+            targetFootPos = hipJoint.position + (hipToTarget.normalized * maxReach);
+            distance = maxReach; 
+        }
+
+        if (distance >= maxReach)
         {
             kneePos = hipJoint.position + hipToTarget.normalized * thighLength;
         }

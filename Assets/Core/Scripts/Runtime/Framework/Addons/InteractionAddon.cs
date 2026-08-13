@@ -165,7 +165,8 @@ namespace Blocks.Gameplay.Core
 
             if (Physics.Raycast(m_MainCamera.transform.position, m_MainCamera.transform.forward, out var hit, raycastDistance, interactionLayer))
             {
-                if (hit.collider.TryGetComponent<IInteractable>(out var raycastTarget) && !IsPhysicsBased(raycastTarget.TriggerMode))
+                var raycastTarget = hit.collider.GetComponentInParent<IInteractable>();
+                if (raycastTarget != null && !IsPhysicsBased(raycastTarget.TriggerMode))
                 {
                     interactables.Add(raycastTarget);
                 }
@@ -175,7 +176,8 @@ namespace Blocks.Gameplay.Core
             for (int i = 0; i < hitCount; i++)
             {
                 var col = m_ProximityColliders[i];
-                if (col.TryGetComponent<IInteractable>(out var proximityTarget) &&
+                var proximityTarget = col.GetComponentInParent<IInteractable>();
+                if (proximityTarget != null &&
                     !interactables.Contains(proximityTarget) &&
                     !IsPhysicsBased(proximityTarget.TriggerMode))
                 {
@@ -190,6 +192,7 @@ namespace Blocks.Gameplay.Core
             {
                 if (!candidate.CanInteract(gameObject))
                 {
+                    //Debug.Log($"Cannot interact with {candidate} due to CanInteract returning false.");
                     continue;
                 }
 
