@@ -142,17 +142,24 @@ public class BirdVehicle : BaseVehicle
     {
         CheckWalkingState();
 
-        // --- NEW: CINEMACHINE CAMERA SWITCHING ---
-        if (wasWalking && !isWalking)
+        // --- CINEMACHINE CAMERA SWITCHING ---
+        if (cachedCamController != null)
         {
-            // We just took off! Switch to Flight Camera and override targets to the bird
-            SetDriverCameraMode("FlightMode", true);
+            if (wasWalking && !isWalking)
+            {
+                // We just took off! ONLY switch the camera mode. Do NOT touch targets!
+                cachedCamController.SwitchCameraMode("FlightMode");
+            }
+            else if (!wasWalking && isWalking)
+            {
+                // We just landed! ONLY switch the camera mode. Do NOT touch targets!
+                cachedCamController.SwitchCameraMode("FreeLook");
+                cachedCamController.SetHorizontalLookAngle(transform.eulerAngles.y);
+            }
         }
-        else if (!wasWalking && isWalking)
-        {
-            // We just landed! Switch to FreeLook and remove the overrides
-            SetDriverCameraMode("FreeLook", false);
-        }
+        
+        wasWalking = isWalking; 
+        // -----------------------------------------
         
         wasWalking = isWalking; // Remember the state for next frame
         // -----------------------------------------

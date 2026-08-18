@@ -6,6 +6,7 @@ using Unity.Cinemachine;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class BaseVehicle : NetworkBehaviour, IInteractable
@@ -221,9 +222,25 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
             if (isLocalPlayerDriver && strictCameraFollow)
             {
                 cachedCamController.SwitchCameraMode("FlightMode");
-                
+
                 // DYNAMICALLY TELL ALL CAMERAS TO FOLLOW THE PLANE ANCHOR
                 cachedCamController.OverrideCameraTargets(targetAnchor);
+            }
+
+            // --- THE NEW FIX: Manually assign the Flight Cam targets once! ---
+            var allCams = FindObjectsByType<Unity.Cinemachine.CinemachineCamera>(
+                FindObjectsInactive.Include
+            );
+            
+            foreach (var cam in allCams)
+            {
+                // Note: Ensure this matches the exact name of your Flight Camera GameObject
+                Debug.Log($"[BaseVehicle] Checking camera: {cam.gameObject.name}, matches? {cam.gameObject.name.Contains("FlightCamera")}");
+                if (cam.gameObject.name.Contains("FlightCamera"))
+                {
+                    cam.Follow = targetAnchor;
+                    cam.LookAt = targetAnchor;
+                }
             }
         }
         
