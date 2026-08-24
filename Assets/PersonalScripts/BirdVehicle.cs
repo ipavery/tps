@@ -9,6 +9,22 @@ public class BirdVehicle : BaseVehicle
     public Transform cameraTransform;
     public Vector2Event lookInputEvent;
 
+    [Header("Virtual Joystick (Mouse Aim)")]
+    [Tooltip("How fast the invisible cursor moves when you move the mouse.")]
+    public float cursorSensitivity = 2f;
+    [Tooltip("How fast the bird naturally levels out when you let go of the mouse.")]
+    public float autoCenterSpeed = 3f;
+
+    [Header("Virtual Joystick UI")]
+    [Tooltip("The canvas containing the flight UI.")]
+    public Canvas flightCanvas;
+    [Tooltip("The RectTransform of the crosshair image.")]
+    public RectTransform crosshairRect;
+    [Tooltip("How far (in pixels) the crosshair can move from the center of the screen.")]
+    public float crosshairRadius = 300f;
+    
+    private Vector2 virtualCursor = Vector2.zero;
+
     [Header("Flight Control Surfaces")]
     [Range(0.01f, 2f)]
     public float controlSensitivity = 1f;
@@ -17,6 +33,8 @@ public class BirdVehicle : BaseVehicle
     public float rollSpeed = 60f;
     [Tooltip("Prevents sideways drifting (simulates the tail stabilizer).")]
     public float lateralGrip = 5f;
+    public float flightAngularDamping = 4f;
+    public float flightLinearDamping = 0.1f;
 
     [Header("Flight & Gliding (Elytra Style)")]
     [Tooltip("How much falling speed is converted into forward speed when looking down.")]
@@ -29,6 +47,13 @@ public class BirdVehicle : BaseVehicle
     [Header("Flight Abilities")]
     public float boostThrust = 8000f;
     public float hoverForce = 1500f;
+
+    [Header("Stall Mechanics")]
+    [Tooltip("Forward speed where the bird loses control and falls.")]
+    public float stallSpeed = 5f;
+    [Tooltip("Forward speed required to regain aerodynamic control.")]
+    public float recoverySpeed = 20f;
+    public bool isStalled = false;
 
     // Local inputs for flight
     private float pitchInput = 0f;
@@ -68,10 +93,23 @@ public class BirdVehicle : BaseVehicle
     [Tooltip("How fast the bird must be flying to generate vapor trails.")]
     public float minTrailSpeed = 20f;
 
+    [Header("Wing Animation (Tuck)")]
+    public Transform leftWing;
+    public Transform rightWing;
+    [Tooltip("The local rotation of the wings when flying normally.")]
+    public Vector3 leftWingOpenRotation = Vector3.zero;
+    public Vector3 rightWingOpenRotation = Vector3.zero;
+    [Tooltip("The local rotation of the wings when tucked back (adjust axis depending on your model).")]
+    public Vector3 leftWingTuckedRotation = new Vector3(0, 60, 0); 
+    public Vector3 rightWingTuckedRotation = new Vector3(0, -60, 0);
+    [Tooltip("How fast the wings snap in and out.")]
+    public float wingTuckSpeed = 12f;
+
     // Cache inputs
     private Vector2 moveInput;
     private bool isBoostPressed;
     private bool isHoverPressed;
+    private bool tuckToggle = false;
 
     protected override void Awake()
     {
@@ -81,25 +119,73 @@ public class BirdVehicle : BaseVehicle
 
     protected override void ProcessVehicleInput()
     {
-        // 1. Move input (WASD) - Used for walking, and A/D is used for flight roll
+        // 1. Move input (A/D is used for flight roll)
         moveInput = moveInputEvent != null ? moveInputEvent.LastValue : Vector2.zero;
         rollInput = moveInput.x * controlSensitivity;
         
-        // 2. Look input (Mouse) - Used for Pitch and Yaw during flight
-        Vector2 lookInput = lookInputEvent != null ? lookInputEvent.LastValue : Vector2.zero;
-        yawInput = lookInput.x * controlSensitivity;
-        pitchInput = lookInput.y * controlSensitivity; 
+        // 2. Look input (Mouse Delta)
+        Vector2 lookDelta = lookInputEvent != null ? lookInputEvent.LastValue : Vector2.zero;
+
+        if (isWalking)
+        {
+            // WALKING: Use direct, snappy input for ground control
+            yawInput = lookDelta.x * controlSensitivity;
+            pitchInput = lookDelta.y * controlSensitivity;
+            virtualCursor = Vector2.zero; // Keep cursor centered while grounded
+        }
+        else
+        {
+            // FLYING: Accumulate the mouse movement into a virtual cursor position
+            if (lookDelta.sqrMagnitude > 0.001f)
+            {
+                virtualCursor += lookDelta * cursorSensitivity * Time.deltaTime;
+                
+                // Clamp it like a physical joystick (-1 to 1)
+                virtualCursor.x = Mathf.Clamp(virtualCursor.x, -1f, 1f);
+                virtualCursor.y = Mathf.Clamp(virtualCursor.y, -1f, 1f);
+            }
+            else
+            {
+                // Smoothly pull the cursor back to the center if hands are off the mouse
+                virtualCursor = Vector2.Lerp(virtualCursor, Vector2.zero, Time.deltaTime * autoCenterSpeed);
+            }
+
+            // Pass the cursor's coordinates to your existing physics logic!
+            yawInput = virtualCursor.x;
+            pitchInput = virtualCursor.y;
+        }
 
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
         }
 
-        // Capture Ability Inputs
         if (Keyboard.current != null)
         {
             isBoostPressed = Keyboard.current.shiftKey.isPressed;
             isHoverPressed = Keyboard.current.spaceKey.isPressed;
+
+            if(Keyboard.current.ctrlKey.wasPressedThisFrame)
+            {
+                tuckToggle = !tuckToggle;
+            }
+        }
+
+        // --- VIRTUAL JOYSTICK UI UPDATE ---
+        if (flightCanvas != null)
+        {
+            // Only show the crosshair if we are the driver and currently flying
+            bool shouldShowUI = isLocalPlayerDriver && !isWalking;
+            if (flightCanvas.gameObject.activeSelf != shouldShowUI)
+            {
+                flightCanvas.gameObject.SetActive(shouldShowUI);
+            }
+        }
+
+        if (crosshairRect != null && !isWalking)
+        {
+            // Map the -1 to 1 virtual cursor directly to screen pixels
+            crosshairRect.anchoredPosition = virtualCursor * crosshairRadius;
         }
     }
 
@@ -135,6 +221,18 @@ public class BirdVehicle : BaseVehicle
                 // emitting controls whether new trail segments are drawn
                 trail.emitting = shouldShowTrails;
             }
+        }
+
+        // 3. Procedurally Animate Wings & Colliders
+        if (leftWing != null && rightWing != null)
+        {
+            // Pick our target angles based on the Right-Click tuck button
+            Vector3 targetLeft = tuckToggle ? leftWingTuckedRotation : leftWingOpenRotation;
+            Vector3 targetRight = tuckToggle ? rightWingTuckedRotation : rightWingOpenRotation;
+
+            // Smoothly rotate the wing transforms toward the target angles
+            leftWing.localRotation = Quaternion.Lerp(leftWing.localRotation, Quaternion.Euler(targetLeft), Time.deltaTime * wingTuckSpeed);
+            rightWing.localRotation = Quaternion.Lerp(rightWing.localRotation, Quaternion.Euler(targetRight), Time.deltaTime * wingTuckSpeed);
         }
     }
 
@@ -205,8 +303,8 @@ public class BirdVehicle : BaseVehicle
         else
         {
             // Free aerodynamic movement in the air
-            rb.linearDamping = 0.1f;
-            rb.angularDamping = 1f; // Slightly higher angular drag prevents violent spinning in air
+            rb.linearDamping = flightLinearDamping;
+            rb.angularDamping = flightAngularDamping; // Slightly higher angular drag prevents violent spinning in air
         }
     }
 
@@ -216,36 +314,73 @@ public class BirdVehicle : BaseVehicle
         float forwardSpeed = Mathf.Max(0, localVelocity.z); 
         float totalSpeed = rb.linearVelocity.magnitude;
 
-        // 1. Elytra Glide Mechanic (Convert falling into forward speed)
-        if (rb.linearVelocity.y < 0) 
+        // ONLY apply lift, drag, and glide if the wings are out!
+        if (!tuckToggle)
         {
-            float fallSpeed = -rb.linearVelocity.y;
-            // The more we pitch down (negative local velocity Y), the more forward boost we get
-            float pitchDownFactor = Mathf.Clamp01(-localVelocity.y / Mathf.Max(1f, totalSpeed));
-            rb.AddForce(transform.forward * (fallSpeed * pitchDownFactor * glideEfficiency), ForceMode.Acceleration);
-        }
+            // 1. Elytra Glide Mechanic 
+            if (rb.linearVelocity.y < 0) 
+            {
+                float fallSpeed = -rb.linearVelocity.y;
+                float pitchDownFactor = Mathf.Clamp01(-localVelocity.y / Mathf.Max(1f, totalSpeed));
+                rb.AddForce(transform.forward * (fallSpeed * pitchDownFactor * glideEfficiency), ForceMode.Acceleration);
+            }
 
-        // 2. Standard Lift & Drag
-        float liftForce = flightLift * (forwardSpeed * forwardSpeed);
-        rb.AddForce(transform.up * liftForce);
+            // 2. Standard Lift & Drag
+            float liftForce = flightLift * (forwardSpeed * forwardSpeed);
+            rb.AddForce(transform.up * liftForce);
 
-        float dragForce = flightDrag * (totalSpeed * totalSpeed);
-        if (totalSpeed > 0.1f)
-        {
-            rb.AddForce(-rb.linearVelocity.normalized * dragForce);
+            float dragForce = flightDrag * (totalSpeed * totalSpeed);
+            if (totalSpeed > 0.1f)
+            {
+                rb.AddForce(-rb.linearVelocity.normalized * dragForce);
+            }
         }
 
         // 3. Airplane-Style Steering (Pitch, Yaw, Roll)
-        // Control authority scales with speed so you can't turn instantly if standing still in mid-air
+        // We leave this OUTSIDE the tuck check so you can aim your dive while tucked!
         float controlAuthority = Mathf.Clamp(forwardSpeed / 10f, 0.1f, 1f); 
         
         rb.AddTorque(transform.right * -pitchInput * pitchSpeed * controlAuthority, ForceMode.Acceleration);
         rb.AddTorque(transform.up * yawInput * yawSpeed * controlAuthority, ForceMode.Acceleration);
         rb.AddTorque(transform.forward * -rollInput * rollSpeed * controlAuthority, ForceMode.Acceleration);
 
-        // 4. Aerodynamic Grip (Prevents sideways drifting)
-        Vector3 sidewaysVelocity = Vector3.Project(rb.linearVelocity, transform.right);
-        rb.AddForce(-sidewaysVelocity * lateralGrip, ForceMode.Acceleration);
+        // ONLY apply Aerodynamic Grip and Stall mechanics if the wings are out!
+        if (!tuckToggle)
+        {
+            // 4. Arcade Aerodynamic Grip (State-Based Hysteresis Stall)
+            if (!isStalled && forwardSpeed < stallSpeed)
+            {
+                isStalled = true; 
+            }
+            else if (isStalled && forwardSpeed > recoverySpeed)
+            {
+                isStalled = false; 
+            }
+
+            float gripAuthority = isStalled ? 0f : 1f;
+
+            // Apply Local Aerodynamics
+            localVelocity.x = Mathf.Lerp(localVelocity.x, 0, Time.fixedDeltaTime * lateralGrip * gripAuthority);
+            localVelocity.y = Mathf.Lerp(localVelocity.y, 0, Time.fixedDeltaTime * lateralGrip * gripAuthority);
+
+            // Turn Speed Bleed
+            if (!isStalled)
+            {
+                float alignment = Vector3.Dot(rb.linearVelocity.normalized, transform.forward);
+                float speedRetention = Mathf.Lerp(0.95f, 1f, Mathf.Clamp01(alignment));
+                localVelocity.z *= speedRetention;
+            }
+
+            rb.linearVelocity = transform.TransformDirection(localVelocity);
+            
+            // The Rock Drop
+            if (isStalled)
+            {
+                Vector3 worldHorizontalVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+                rb.AddForce(-worldHorizontalVel * 5f, ForceMode.Acceleration);
+                rb.AddForce(Vector3.down * 25f, ForceMode.Acceleration);
+            }
+        }
     }
 
     private void ApplyFlightAbilities()
