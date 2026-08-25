@@ -8,6 +8,7 @@ public class InteractionTest : MonoBehaviour, IInteractable
     public int Priority => 10;
     public string InteractionPromptText => "I am a cube!";
     public int count = 0;
+    public GameObject cubePrefab;
 
     public bool CanInteract(GameObject interactor)
     {
@@ -23,6 +24,7 @@ public class InteractionTest : MonoBehaviour, IInteractable
         {
             count++;
             Debug.Log($"Player {playerNetObj.OwnerClientId} interacted with the cube! Interacted {count} times.");
+            Instantiate(cubePrefab, transform.position + Vector3.up * 20f + Vector3.right * Random.Range(-5f, 5f), Quaternion.identity);
             //InteractionPromptText = $"I am a cube! Interacted {count} times."; //can't set this?
         }
     }

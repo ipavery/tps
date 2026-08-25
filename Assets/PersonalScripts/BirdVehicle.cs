@@ -46,13 +46,21 @@ public class BirdVehicle : BaseVehicle
     
     [Header("Flight Abilities")]
     public float boostThrust = 8000f;
-    public float hoverForce = 1500f;
+    [Tooltip("Upward force applied when pressing hover on the ground to take off.")]
+    public float takeoffForce = 2500f; 
+    [Tooltip("How quickly the bird comes to a complete stop when hovering in the air.")]
+    public float airHoverBrakeSpeed = 4f;
 
     [Header("Stall Mechanics")]
     [Tooltip("Forward speed where the bird loses control and falls.")]
     public float stallSpeed = 5f;
-    [Tooltip("Forward speed required to regain aerodynamic control.")]
-    public float recoverySpeed = 20f;
+    [Tooltip("How perfectly the nose must align with the falling direction to recover (1.0 = perfect, 0.9 = slight angle).")]
+    public float recoveryAlignment = 0.9f;
+    [Tooltip("How strongly the bird automatically rotates to face its movement direction.")]
+    public float autoAlignTorque = 20f; // ADD THIS
+    [Tooltip("How smoothly the bird transitions in and out of a stall (lower = smoother/slower).")]
+    public float stallTransitionSpeed = 2f;
+    private float currentGrip = 1f; // Tracks the smoothed state of our aerodynamics
     public bool isStalled = false;
 
     // Local inputs for flight
@@ -104,6 +112,10 @@ public class BirdVehicle : BaseVehicle
     public Vector3 rightWingTuckedRotation = new Vector3(0, -60, 0);
     [Tooltip("How fast the wings snap in and out.")]
     public float wingTuckSpeed = 12f;
+
+    [Header("Debug")]
+    public bool showDebugForces = true;
+    public float debugLineScale = 0.05f; // Adjust this in the inspector to make lines longer/shorter
 
     // Cache inputs
     private Vector2 moveInput;
@@ -314,57 +326,66 @@ public class BirdVehicle : BaseVehicle
         float forwardSpeed = Mathf.Max(0, localVelocity.z); 
         float totalSpeed = rb.linearVelocity.magnitude;
 
-        // ONLY apply lift, drag, and glide if the wings are out!
-        if (!tuckToggle)
+        if (!tuckToggle && !isStalled)
         {
             // 1. Elytra Glide Mechanic 
             if (rb.linearVelocity.y < 0) 
             {
                 float fallSpeed = -rb.linearVelocity.y;
                 float pitchDownFactor = Mathf.Clamp01(-localVelocity.y / Mathf.Max(1f, totalSpeed));
-                rb.AddForce(transform.forward * (fallSpeed * pitchDownFactor * glideEfficiency), ForceMode.Acceleration);
+                Vector3 glideForce = transform.forward * (fallSpeed * pitchDownFactor * glideEfficiency);
+                rb.AddForce(glideForce, ForceMode.Acceleration);
+                
+                if (showDebugForces) Debug.DrawRay(transform.position, glideForce * debugLineScale, Color.cyan);
             }
 
             // 2. Standard Lift & Drag
-            float liftForce = flightLift * (forwardSpeed * forwardSpeed);
-            rb.AddForce(transform.up * liftForce);
+            Vector3 liftForce = transform.up * (flightLift * (forwardSpeed * forwardSpeed));
+            rb.AddForce(liftForce);
+            if (showDebugForces) Debug.DrawRay(transform.position, liftForce * debugLineScale, Color.green);
 
-            float dragForce = flightDrag * (totalSpeed * totalSpeed);
+            float dragForceMag = flightDrag * (totalSpeed * totalSpeed);
             if (totalSpeed > 0.1f)
             {
-                rb.AddForce(-rb.linearVelocity.normalized * dragForce);
+                Vector3 dragForce = -rb.linearVelocity.normalized * dragForceMag;
+                rb.AddForce(dragForce);
+                if (showDebugForces) Debug.DrawRay(transform.position, dragForce * debugLineScale, Color.red);
             }
         }
 
         // 3. Airplane-Style Steering (Pitch, Yaw, Roll)
-        // We leave this OUTSIDE the tuck check so you can aim your dive while tucked!
-        float controlAuthority = Mathf.Clamp(forwardSpeed / 10f, 0.1f, 1f); 
+        float controlAuthority = Mathf.Clamp(forwardSpeed / 10f, 0.1f, 1f);
+        float tuckModifier = tuckToggle ? 0.1f : 1f;
+        controlAuthority *= tuckModifier;
+        rb.linearDamping = tuckToggle ? 0 : flightLinearDamping;
         
         rb.AddTorque(transform.right * -pitchInput * pitchSpeed * controlAuthority, ForceMode.Acceleration);
         rb.AddTorque(transform.up * yawInput * yawSpeed * controlAuthority, ForceMode.Acceleration);
         rb.AddTorque(transform.forward * -rollInput * rollSpeed * controlAuthority, ForceMode.Acceleration);
 
-        // ONLY apply Aerodynamic Grip and Stall mechanics if the wings are out!
         if (!tuckToggle)
         {
-            // 4. Arcade Aerodynamic Grip (State-Based Hysteresis Stall)
+            // 4. Arcade Aerodynamic Grip (Smoothed Stall Transition)
             if (!isStalled && forwardSpeed < stallSpeed)
             {
                 isStalled = true; 
             }
-            else if (isStalled && forwardSpeed > recoverySpeed)
+            else if (isStalled && totalSpeed > 1f) 
             {
-                isStalled = false; 
+                float currentAlignment = Vector3.Dot(rb.linearVelocity.normalized, transform.forward);
+                if (currentAlignment >= recoveryAlignment)
+                {
+                    isStalled = false; 
+                }
             }
 
-            float gripAuthority = isStalled ? 0f : 1f;
+            float targetGrip = isStalled ? 0f : 1f;
+            currentGrip = Mathf.MoveTowards(currentGrip, targetGrip, Time.fixedDeltaTime * stallTransitionSpeed);
 
-            // Apply Local Aerodynamics
-            localVelocity.x = Mathf.Lerp(localVelocity.x, 0, Time.fixedDeltaTime * lateralGrip * gripAuthority);
-            localVelocity.y = Mathf.Lerp(localVelocity.y, 0, Time.fixedDeltaTime * lateralGrip * gripAuthority);
+            localVelocity.x = Mathf.Lerp(localVelocity.x, 0, Time.fixedDeltaTime * lateralGrip * currentGrip);
+            localVelocity.y = Mathf.Lerp(localVelocity.y, 0, Time.fixedDeltaTime * lateralGrip * currentGrip);
 
-            // Turn Speed Bleed
-            if (!isStalled)
+            if (currentGrip > 0f)
             {
                 float alignment = Vector3.Dot(rb.linearVelocity.normalized, transform.forward);
                 float speedRetention = Mathf.Lerp(0.95f, 1f, Mathf.Clamp01(alignment));
@@ -372,30 +393,44 @@ public class BirdVehicle : BaseVehicle
             }
 
             rb.linearVelocity = transform.TransformDirection(localVelocity);
-            
-            // The Rock Drop
-            if (isStalled)
-            {
-                Vector3 worldHorizontalVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-                rb.AddForce(-worldHorizontalVel * 5f, ForceMode.Acceleration);
-                rb.AddForce(Vector3.down * 25f, ForceMode.Acceleration);
-            }
+        }
+        
+        // 5. Auto-Alignment (Weather-Vaning)
+        if (totalSpeed > 1f)
+        {
+            Vector3 velocityDirection = rb.linearVelocity.normalized;
+            Vector3 alignAxis = Vector3.Cross(transform.forward, velocityDirection);
+            float currentAlignTorque = isStalled ? autoAlignTorque * 2f : autoAlignTorque;
+            rb.AddTorque(alignAxis * currentAlignTorque, ForceMode.Acceleration);
         }
     }
 
     private void ApplyFlightAbilities()
     {
-        // HOVER (Spacebar)
+        // HOVER / TAKEOFF (Spacebar)
         if (isHoverPressed && currentStamina > 0)
         {
             currentStamina -= hoverStaminaCost * Time.fixedDeltaTime;
             
-            // Counteract gravity to hover in place
-            Vector3 hoverCounterForce = -Physics.gravity + (Vector3.up * hoverForce);
-            rb.AddForce(hoverCounterForce, ForceMode.Acceleration);
-
-            // Heavily dampen existing velocity so you stop and hover quickly
-            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.fixedDeltaTime * 2f);
+            if (isWalking)
+            {
+                // GROUND BEHAVIOR: Upward boost to take off
+                Vector3 launchForce = Vector3.up * takeoffForce; // Or use your original hoverForce here
+                rb.AddForce(launchForce, ForceMode.Acceleration);
+                
+                if (showDebugForces) Debug.DrawRay(transform.position, launchForce * debugLineScale, Color.yellow);
+            }
+            else
+            {
+                // AIR BEHAVIOR: High drag and counteract gravity to rest in place
+                Vector3 hoverCounterForce = -Physics.gravity; // Perfectly counteracts falling
+                rb.AddForce(hoverCounterForce, ForceMode.Acceleration);
+                
+                // Heavily dampen existing velocity to come to a stop quickly
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.fixedDeltaTime * airHoverBrakeSpeed);
+                
+                if (showDebugForces) Debug.DrawRay(transform.position, hoverCounterForce * debugLineScale, Color.yellow);
+            }
         }
         
         // BOOST (Shift)
@@ -405,12 +440,13 @@ public class BirdVehicle : BaseVehicle
             
             // Push forward and slightly upward
             Vector3 boostDir = (transform.forward + (Vector3.up * 0.25f)).normalized;
-            rb.AddForce(boostDir * boostThrust);
-            Debug.Log($"boosting: {currentStamina}");
+            Vector3 boostForce = boostDir * boostThrust;
+            rb.AddForce(boostForce);
+            
+            if (showDebugForces) Debug.DrawRay(transform.position, boostForce * debugLineScale, Color.magenta);
         }
     }
 
-    // --- Walking Methods (Unchanged) ---
     private void ApplyHoverLegs()
     {
         foreach (Transform point in legPoints)
@@ -421,17 +457,13 @@ public class BirdVehicle : BaseVehicle
                 float compression = hoverHeight - hit.distance;
                 float upwardSpeed = Vector3.Dot(pointVelocity, Vector3.up);
 
-                float hoverForce = (compression * springConstant) - (upwardSpeed * dampingConstant);
-                rb.AddForceAtPosition(Vector3.up * hoverForce, point.position);
+                float hoverForceMag = (compression * springConstant) - (upwardSpeed * dampingConstant);
+                Vector3 legForce = Vector3.up * hoverForceMag;
+                rb.AddForceAtPosition(legForce, point.position);
+                
+                if (showDebugForces) Debug.DrawRay(point.position, legForce * debugLineScale, Color.white);
             }
         }
-    }
-
-    private void ApplyUprightStabilization()
-    {
-        Vector3 cross = Vector3.Cross(transform.up, Vector3.up);
-        Vector3 torque = (cross * uprightTorque) - (rb.angularVelocity * uprightDamping);
-        rb.AddTorque(torque, ForceMode.Acceleration);
     }
 
     private void ApplyWalkingMovement()
@@ -451,7 +483,18 @@ public class BirdVehicle : BaseVehicle
         {
             moveDirection = (transform.forward * moveInput.y) + (transform.right * moveInput.x);
         }
-        rb.AddForce(moveDirection.normalized * walkAcceleration, ForceMode.Acceleration);
+        
+        Vector3 walkForce = moveDirection.normalized * walkAcceleration;
+        rb.AddForce(walkForce, ForceMode.Acceleration);
+        
+        if (showDebugForces) Debug.DrawRay(transform.position, walkForce * debugLineScale, Color.blue);
+    }
+
+    private void ApplyUprightStabilization()
+    {
+        Vector3 cross = Vector3.Cross(transform.up, Vector3.up);
+        Vector3 torque = (cross * uprightTorque) - (rb.angularVelocity * uprightDamping);
+        rb.AddTorque(torque, ForceMode.Acceleration);
     }
 
     private void ApplyRotation()
