@@ -239,7 +239,7 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
             foreach (var cam in allCams)
             {
                 // Note: Ensure this matches the exact name of your Flight Camera GameObject
-                Debug.Log($"[BaseVehicle] Checking camera: {cam.gameObject.name}, matches? {cam.gameObject.name.Contains("FlightCamera")}");
+                //Debug.Log($"[BaseVehicle] Checking camera: {cam.gameObject.name}, matches? {cam.gameObject.name.Contains("FlightCamera")}");
                 if (cam.gameObject.name.Contains("FlightCamera"))
                 {
                     cam.Follow = targetAnchor;

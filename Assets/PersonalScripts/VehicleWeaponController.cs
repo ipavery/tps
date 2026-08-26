@@ -66,11 +66,12 @@ public class VehicleWeaponController : NetworkBehaviour
         if (m_IsFiring && mountedWeapon != null)
         {
             Vector3 fireOrigin = mountedWeapon.Muzzle != null ? mountedWeapon.Muzzle.position : weaponMount.position;
-            
+
             // Aim straight down the nose of the vehicle
             Vector3 fireDirection = transform.forward; 
 
             // Fire the weapon, passing the vehicle as the owner entity
+            Debug.Log("Firing weapon from vehicle: " + gameObject.name);
             mountedWeapon.Fire(gameObject, fireOrigin, fireDirection);
         }
     }
