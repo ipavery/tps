@@ -14,6 +14,8 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
     [Header("Seat Configuration")]
     [Tooltip("Index 0 is ALWAYS the Driver. Subsequent indices are passengers.")]
     public Transform[] seats;
+
+    public bool IsLocalPlayerDriver => isLocalPlayerDriver;
     
     // Server-side dictionary tracking which ClientID is in which seat index
     private Dictionary<ulong, int> serverSeatMap = new Dictionary<ulong, int>();

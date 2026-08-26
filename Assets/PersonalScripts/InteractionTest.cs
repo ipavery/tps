@@ -24,7 +24,7 @@ public class InteractionTest : MonoBehaviour, IInteractable
         {
             count++;
             Debug.Log($"Player {playerNetObj.OwnerClientId} interacted with the cube! Interacted {count} times.");
-            Instantiate(cubePrefab, transform.position + Vector3.up * 20f + Vector3.right * Random.Range(-5f, 5f), Quaternion.identity);
+            Instantiate(cubePrefab, transform.position + Vector3.up * 5f + Vector3.right * Random.Range(-5f, 5f), Quaternion.identity);
             //InteractionPromptText = $"I am a cube! Interacted {count} times."; //can't set this?
         }
     }

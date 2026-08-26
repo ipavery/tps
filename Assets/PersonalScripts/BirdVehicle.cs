@@ -127,13 +127,10 @@ public class BirdVehicle : BaseVehicle
     {
         base.Awake();
         currentStamina = maxStamina;
-        Debug.Log($"awake {transform.name}");
     }
 
     protected override void Start()
     {
-        Debug.Log($"start {transform.name}");
-        Debug.Log($"start {flightCanvas}");
         if(flightCanvas != null)
         {
             flightCanvas.gameObject.SetActive(false); // Hide the flight UI initially
