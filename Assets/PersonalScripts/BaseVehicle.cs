@@ -82,6 +82,8 @@ public class BaseVehicle : NetworkBehaviour, IInteractable
         }
     }
 
+    protected virtual void Start() {}
+
     protected virtual void FixedUpdate()
     {
         if (!IsSpawned) return;

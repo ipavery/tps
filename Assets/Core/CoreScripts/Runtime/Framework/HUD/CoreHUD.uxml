@@ -1,5 +1,5 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Assets/Core/Scripts/Runtime/Framework/HUD/CoreHUD.uss?fileID=7433441132597879392&amp;guid=e44b6512441c14caeb7f0f5c564b261c&amp;type=3#CoreHUD"/>
+    <Style src="project://database/Assets/Core/CoreScripts/Runtime/Framework/HUD/CoreHUD.uss?fileID=7433441132597879392&amp;guid=e44b6512441c14caeb7f0f5c564b261c&amp;type=3#CoreHUD"/>
     <ui:VisualElement name="hud-root">
         <ui:VisualElement name="health-info-container">
             <ui:ProgressBar value="63.8" title="my-progress" name="player-health-bar" class="blocks-progress-bar"/>

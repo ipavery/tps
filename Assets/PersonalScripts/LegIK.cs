@@ -1,12 +1,81 @@
 using UnityEngine;
 
-public class BirdLegIK : MonoBehaviour
+#if UNITY_EDITOR
+using UnityEditor;
+
+[CustomEditor(typeof(LegIK))]
+public class LegIKEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        // Draw the normal inspector first
+        DrawDefaultInspector();
+
+        LegIK sourceLeg = (LegIK)target;
+
+        EditorGUILayout.Space();
+        
+        // Create the button
+        if (GUILayout.Button("Copy Settings to All Legs in 'Visuals'", GUILayout.Height(30)))
+        {
+            CopySettingsToAll(sourceLeg);
+        }
+    }
+
+    private void CopySettingsToAll(LegIK sourceLeg)
+    {
+        // Find the "Visuals" object at the root of the vehicle
+        Transform visuals = sourceLeg.transform.root.Find("Visuals");
+        if (visuals == null)
+        {
+            Debug.LogWarning("Could not find an object named 'Visuals' under the root!");
+            return;
+        }
+
+        // Get all legs within the Visuals object
+        LegIK[] allLegs = visuals.GetComponentsInChildren<LegIK>();
+        
+        // Register the undo action so you can Ctrl+Z if you make a mistake
+        Undo.RecordObjects(allLegs, "Copy Leg IK Settings");
+
+        int copyCount = 0;
+        foreach (var targetLeg in allLegs)
+        {
+            if (targetLeg == sourceLeg) continue; // Don't copy to itself
+
+            // Copy all the value types (excluding references like Transforms/Rigidbodies)
+            targetLeg.maxLegLength = sourceLeg.maxLegLength;
+            targetLeg.groundLayer = sourceLeg.groundLayer;
+            targetLeg.bendBackward = sourceLeg.bendBackward;
+            
+            targetLeg.minStepSpeed = sourceLeg.minStepSpeed;
+            targetLeg.stepSpeedMultiplier = sourceLeg.stepSpeedMultiplier;
+            targetLeg.stepHeight = sourceLeg.stepHeight;
+            targetLeg.stepDistance = sourceLeg.stepDistance;
+            targetLeg.velocityAnticipation = sourceLeg.velocityAnticipation;
+            targetLeg.stepCooldown = sourceLeg.stepCooldown;
+            targetLeg.restThreshold = sourceLeg.restThreshold;
+            
+            targetLeg.stepPushForce = sourceLeg.stepPushForce;
+
+            // Mark the object as changed so Unity saves it
+            EditorUtility.SetDirty(targetLeg);
+            copyCount++;
+        }
+
+        Debug.Log($"Successfully copied IK settings from {sourceLeg.gameObject.name} to {copyCount} other legs.");
+    }
+}
+#endif
+
+
+public class LegIK : MonoBehaviour
 {
     [Header("Joints (Empty GameObjects)")]
     public Transform hipJoint;
     public Transform kneeJoint;
     public Transform footJoint;
-    
+
     [Header("Visuals")]
     public Transform footMesh;
 
@@ -14,29 +83,22 @@ public class BirdLegIK : MonoBehaviour
     public Transform hoverOrigin;
     public float maxLegLength = 3f;
     public LayerMask groundLayer;
-    public bool bendBackward = true; 
+    public bool bendBackward = true;
 
-    [Header("Stepping Logic")]
-    [Tooltip("Drag the OTHER leg's script here so they alternate steps.")]
-    public BirdLegIK oppositeLeg; 
-    
     public float minStepSpeed = 6f;
     public float stepSpeedMultiplier = 1.5f;
-    public float stepHeight = 0.5f;   
-    
+    public float stepHeight = 0.5f;
+
+    public bool canStep = false;
+
     public float stepDistance = 1.2f;
     public float velocityAnticipation = 0.3f;
-    public float stepCooldown = 0.15f; 
+    public float stepCooldown = 0.15f;
     public float restThreshold = 0.4f;
 
     [Header("Physics Interaction")]
     public Rigidbody vehicleRb;
     public float stepPushForce = 1500f;
-
-    [Header("Flight Retraction")]
-    public BirdVehicle birdVehicle;
-    [Tooltip("Where the foot should pull up to when flying (relative to the hip).")]
-    public Vector3 flightRetractedOffset = new Vector3(0, -0.5f, -1f);
 
     public bool isStepping { get; private set; } = false;
     public float lastStepEndTime { get; private set; } = 0f;
@@ -48,8 +110,8 @@ public class BirdLegIK : MonoBehaviour
     private Vector3 currentPlantedNormal = Vector3.up;
     private Vector3 stepStartPos;
     private Vector3 stepTargetPos;
-    private float stepProgress = 0f;
-    private float currentActiveStepSpeed = 8f; 
+    public float stepProgress = 0f; //exposed for GaitManager to read
+    private float currentActiveStepSpeed = 8f;
 
     private Vector3 lastBodyPos;
     private Vector3 bodyVelocity;
@@ -72,25 +134,6 @@ public class BirdLegIK : MonoBehaviour
 
         bodyVelocity = (hoverOrigin.position - lastBodyPos) / Time.deltaTime;
         lastBodyPos = hoverOrigin.position;
-
-        // --- FLIGHT OVERRIDE ---
-        if (birdVehicle != null && !birdVehicle.isWalking)
-        {
-            isStepping = false;
-            
-            // Calculate where the tucked foot should be
-            Vector3 tuckedPos = hipJoint.position + (birdVehicle.transform.rotation * flightRetractedOffset);
-            
-            // THE FIX: Add the vehicle's movement displacement to the foot this frame.
-            // This prevents the foot from being "left behind" in world space!
-            currentPlantedPos += hoverOrigin.position - lastBodyPos;
-            
-            // Now smoothly reel it in
-            currentPlantedPos = Vector3.Lerp(currentPlantedPos, tuckedPos, Time.deltaTime * 15f);
-            
-            SolveIK(currentPlantedPos, birdVehicle.transform.up);
-            return; 
-        }
         // ----------------------------
 
         GetIdealFootPosition(out Vector3 idealPos, out Vector3 idealNormal);
@@ -131,26 +174,18 @@ public class BirdLegIK : MonoBehaviour
 
     private void CheckAndStartStep(Vector3 idealPos, Vector3 idealNormal)
     {
-        if (oppositeLeg != null)
-        {
-            if (oppositeLeg.isStepping) return;
-            if (Time.time - oppositeLeg.lastStepEndTime < stepCooldown) return;
-        }
+        if (!canStep) return;
 
         float currentSpeed = bodyVelocity.magnitude;
         bool isStopped = currentSpeed < 0.5f;
 
         Vector3 predictedIdeal = idealPos + (bodyVelocity * velocityAnticipation);
         float distanceToPredicted = Vector3.Distance(currentPlantedPos, predictedIdeal);
-        
+
         float threshold = isStopped ? restThreshold : stepDistance;
 
         if (distanceToPredicted > threshold)
         {
-            if (oppositeLeg != null && oppositeLeg.GetPredictedDistanceToIdeal() > distanceToPredicted + 0.1f)
-            {
-                return; 
-            }
 
             isStepping = true;
             stepProgress = 0f;
@@ -166,12 +201,12 @@ public class BirdLegIK : MonoBehaviour
             else
             {
                 Vector3 moveDir = bodyVelocity.normalized;
-                moveDir.y = 0; 
+                moveDir.y = 0;
                 Vector3 projectedTarget = predictedIdeal + (moveDir * (stepDistance * 0.25f));
-                
+
                 // GROUND CLAMPING: Raycast from the vehicle's height down to the projected X/Z coordinate
                 Vector3 rayOrigin = new Vector3(projectedTarget.x, hoverOrigin.position.y, projectedTarget.z);
-                
+
                 if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, maxLegLength * 2f, groundLayer))
                 {
                     stepTargetPos = hit.point;
@@ -200,14 +235,14 @@ public class BirdLegIK : MonoBehaviour
         {
             stepProgress = 1f;
             isStepping = false;
-            lastStepEndTime = Time.time; 
+            lastStepEndTime = Time.time;
             currentPlantedPos = stepTargetPos;
             return currentPlantedPos;
         }
 
         Vector3 currentPos = Vector3.Lerp(stepStartPos, stepTargetPos, stepProgress);
         currentPos.y += Mathf.Sin(stepProgress * Mathf.PI) * stepHeight;
-        
+
         return currentPos;
     }
 
@@ -223,7 +258,7 @@ public class BirdLegIK : MonoBehaviour
         {
             // Pull the target back to the absolute maximum reach of the leg
             targetFootPos = hipJoint.position + (hipToTarget.normalized * maxReach);
-            distance = maxReach; 
+            distance = maxReach;
         }
 
         if (distance >= maxReach)
@@ -237,7 +272,7 @@ public class BirdLegIK : MonoBehaviour
 
             Vector3 kneeAimDirection = transform.forward;
             Vector3 bendAxis = Vector3.Cross(hipToTarget.normalized, kneeAimDirection);
-            
+
             if (bendAxis.sqrMagnitude < 0.001f) bendAxis = transform.right;
             else bendAxis = bendAxis.normalized;
 
@@ -252,7 +287,7 @@ public class BirdLegIK : MonoBehaviour
 
         hipJoint.rotation = Quaternion.LookRotation(kneePos - hipJoint.position, transform.forward);
         kneeJoint.rotation = Quaternion.LookRotation(targetFootPos - kneePos, transform.forward);
-        
+
         if (footMesh != null)
         {
             footMesh.position = targetFootPos;

@@ -38,6 +38,11 @@ public class HoverVehicle2 : BaseVehicle
         ApplyPropulsionAndSteering();
     }
 
+    protected override void ApplyAlwaysPhysics()
+    {
+        ApplyHoverPhysics();
+    }
+
     private void ApplyHoverPhysics()
     {
         foreach (Transform point in hoverPoints)
